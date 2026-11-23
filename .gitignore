@@ -1,0 +1,13 @@
+__pycache__/
+*.py[cod]
+.venv/
+.env
+.env.*
+logs/
+/*.json
+/*.jsonl
+*.csv
+demo-output.png
+elevation_speed_overlay.png
+drive_*.json
+*.log
