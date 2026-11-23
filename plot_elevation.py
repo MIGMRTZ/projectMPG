@@ -13,6 +13,7 @@ def main():
     drive = load_drive(args.file)
     if not drive:
         parser.exit(message="No readings to plot.\n")
+    # Only the bundled drive gets this label. The same command also accepts real logs.
     subtitle = "Synthetic example" if args.file.resolve() == SAMPLE else None
     save_plot(drive, args.output, subtitle=subtitle)
     print(f"Saved {args.output}")

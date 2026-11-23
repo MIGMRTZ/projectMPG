@@ -13,6 +13,8 @@ if not connection.is_connected():
 gps_port = serial.Serial(os.environ.get("GPS_PORT", "/dev/ttyACM0"), 9600, timeout=1)
 
 def nmea_to_degrees(raw, hemisphere):
+    # GPS coordinates pack degrees and minutes together. The last two digits
+    # before the decimal point start the minutes, even for a three-digit longitude.
     dot = raw.index(".")
     degrees = float(raw[:dot - 2])
     minutes = float(raw[dot - 2:])
@@ -23,13 +25,17 @@ def nmea_to_degrees(raw, hemisphere):
 
 def get_gps_fix():
     fix = {}
+    # Position and altitude arrive in separate messages. Try up to ten lines
+    # to collect both, then keep the position even if altitude is missing.
     for attempt in range(10):
         line = gps_port.readline().decode("ascii", errors = "replace").strip()
         fields = line.split(",")
+        # An RMC message marked A gives a valid position and speed in knots.
         if "RMC" in line and fields[2] == "A":
             fix["lat"] = nmea_to_degrees(fields[3], fields[4])
             fix["lon"] = nmea_to_degrees(fields[5], fields[6])
             fix["gps_speed_mph"] = float(fields[7]) * 1.15078
+        # A GGA message reports altitude in meters. A fix quality of 0 means no fix.
         if "GGA" in line and fields[6] != "0" and fields[9] != "":
             try:
                 fix["altitude_m"] = float(fields[9])
@@ -51,6 +57,8 @@ def get_reading():
         return None
 
     maf_gps = maf.value.magnitude
+    # Estimate grams of fuel per second from airflow, assuming 14.7 g of air per gram of fuel.
+    # Convert using 453.6 g per pound, 6.17 pounds per US gallon, and 3600 seconds per hour.
     fuel_gph = (maf_gps / 14.7) / 453.6 / 6.17 * 3600
 
     reading = {
@@ -63,11 +71,13 @@ def get_reading():
     }
 
     gps = get_gps_fix()
+    # Keep the truck readings even when the GPS receiver has no position yet.
     if gps is not None:
         reading.update(gps)
 
     return reading
 
+# Readings stay in memory during the drive. Ctrl-C ends the loop so the JSON file can be written.
 drive_log = []
 print("logger started - Ctrl-C to end drive and save")
 

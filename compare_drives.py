@@ -7,10 +7,12 @@ from analyze import SAMPLE, drive_stats, load_drive, print_stats
 def segment(drive_log, start_sec, end_sec):
     if not drive_log:
         return []
+    # Measure the window from the first reading so each drive starts at zero seconds.
     start_time = drive_log[0]["timestamp"]
     result = []
     for reading in drive_log:
         elapsed = reading["timestamp"] - start_time
+        # Keep both endpoints so the final reading can close the last interval.
         if start_sec <= elapsed <= end_sec:
             result.append(reading)
     return result

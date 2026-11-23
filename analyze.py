@@ -22,11 +22,13 @@ def max_gap(drive_log):
             gap = drive_log[i + 1]["timestamp"] - drive_log[i]["timestamp"]
             if gap > biggest:
                 biggest = gap
+            # Readings are about one second apart. A longer gap can mean one was missed.
             if gap > 1.5:
                 print("WARNING: DROPPED READING!")
     return biggest
 
 def count_slowdowns(drive_log):
+    # One braking event can span several readings. Count each drop in speed.
     total = 0
     for i in range(len(drive_log)):
         if i + 1 < len(drive_log):
@@ -61,6 +63,8 @@ def total_fuel(drive_log):
     gallons = 0
     for i in range(len(drive_log)):
         if i + 1 < len(drive_log):
+            # Treat the first reading's fuel rate as steady until the next reading.
+            # Convert seconds to hours so gallons per hour times hours gives gallons.
             gap_hours = ((drive_log[i + 1]["timestamp"] - drive_log[i]["timestamp"]) / 3600)
             gallons = gallons + drive_log[i]["fuel_rate_gph"] * gap_hours
     return gallons
@@ -68,10 +72,12 @@ def total_fuel(drive_log):
 def total_distance(drive_log):
     miles = 0
     points = []
+    # If GPS drops out, the next available position connects directly to the last one.
     for reading in drive_log:
         if "lat" in reading and "lon" in reading:
             points.append((reading["lat"], reading["lon"]))
     for i in range(len(points) - 1):
+        # Haversine uses angles in radians and Earth's radius in miles (3958.8).
         lat1, lon1 = math.radians(points[i][0]), math.radians(points[i][1])
         lat2, lon2 = math.radians(points[i + 1][0]), math.radians(points[i + 1][1])
         a = math.sin((lat2 - lat1) / 2) ** 2 + math.cos(lat1) * math.cos(lat2) * math.sin((lon2 - lon1) / 2) ** 2
@@ -84,6 +90,7 @@ def drive_stats(drive_log):
         return None
     miles = total_distance(drive_log)
     gallons = total_fuel(drive_log)
+    # MPG needs two GPS positions for distance and a positive fuel estimate.
     fixes = sum("lat" in row and "lon" in row for row in drive_log)
     return {
         "miles": miles,

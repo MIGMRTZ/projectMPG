@@ -9,6 +9,7 @@ def elevation_trend(drive_log, i, lookahead_seconds=15):
     now_time = drive_log[i]["timestamp"]
     now_alt = drive_log[i]["altitude_m"]
 
+    # During replay we can read farther into the saved drive to see how the road changed.
     future_alt = None
     for j in range(i + 1, len(drive_log)):
         elapsed = drive_log[j]["timestamp"] - now_time
@@ -22,6 +23,7 @@ def elevation_trend(drive_log, i, lookahead_seconds=15):
     if future_alt is None:
         return None
 
+    # A positive change in meters means a climb. A negative change means a dip.
     return future_alt - now_alt
 
 
@@ -34,6 +36,8 @@ def coaching_decision(drive_log, i, current_state, lookahead_seconds=15):
     if speed < 25:
         return None
 
+    # A new cue needs a 5-meter change. An active cue can continue at 3 meters
+    # in the same direction so small changes near 5 meters don't switch it off.
     if current_state == "coast - dip ahead":
         return "coast - dip ahead" if trend <= -3 else None
     elif current_state == "hold speed - climb ahead":
@@ -60,6 +64,7 @@ def main():
     last_state = None
     for i, reading in enumerate(drive):
         decision = coaching_decision(drive, i, last_state)
+        # Print a cue once when it starts, even if it lasts for several readings.
         if decision != last_state and decision is not None:
             elapsed = reading["timestamp"] - start_time
             print(f"t={elapsed:.0f}s speed={reading['speed_mph']:.0f} mph -> {decision}")

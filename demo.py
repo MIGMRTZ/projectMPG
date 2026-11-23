@@ -5,6 +5,7 @@ from statistics import median
 from pathlib import Path
 
 import matplotlib
+# The demo saves a PNG, so it can run on a laptop or server without opening a window.
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
@@ -15,6 +16,7 @@ def save_plot(readings, path, *, title="Elevation and speed over a drive", subti
         raise ValueError("A plot needs at least one reading.")
 
     start = readings[0]["timestamp"]
+    # Use the median time between readings to find the usual sampling interval.
     steps = [b["timestamp"] - a["timestamp"] for a, b in zip(readings, readings[1:])
              if b["timestamp"] > a["timestamp"]]
     gap_limit = 3 * median(steps) if steps else float("inf")
@@ -23,6 +25,7 @@ def save_plot(readings, path, *, title="Elevation and speed over a drive", subti
     for row in readings:
         elapsed = (row["timestamp"] - start) / 60
         if row["timestamp"] - previous_time > gap_limit:
+            # Matplotlib breaks the lines at NaN so a long pause is visible on the chart.
             minutes.append(elapsed)
             altitude.append(float("nan"))
             speed.append(float("nan"))
@@ -30,6 +33,7 @@ def save_plot(readings, path, *, title="Elevation and speed over a drive", subti
         altitude.append(row.get("altitude_m", float("nan")))
         speed.append(row.get("speed_mph", float("nan")))
         previous_time = row["timestamp"]
+    # Align the two plots by time so a climb and a speed change are easy to compare.
     figure, (terrain, vehicle) = plt.subplots(2, 1, sharex=True, figsize=(9, 5.5))
     figure.subplots_adjust(left=0.10, right=0.97, top=0.77, bottom=0.13, hspace=0.40)
     figure.text(0.10, 0.93, title,
@@ -59,6 +63,7 @@ def main():
     from analyze import total_distance, total_fuel
     from coach_test import coaching_decision
 
+    # The fictional drive goes through the same calculations as a drive recorded in the truck.
     sample = Path(__file__).resolve().parent / "examples" / "synthetic_drive.json"
     with sample.open(encoding="utf-8") as file:
         readings = json.load(file)
